@@ -140,10 +140,24 @@ func (e *Endpoint) register(method string, handler Handler) *Endpoint {
 	return e
 }
 
-// Endpoint creates a new HTTP router endpoint.
-func (rt *Router) Endpoint(pattern string) *Endpoint {
-	e := newEndpoint(pattern, rt)
-	rt.endpoints = append(rt.endpoints, e)
+// endpointHandler represents an HTTP endpoint handler.
+type endpointHandler struct {
+	router *Router
+}
 
-	return e
+// newEndpointHandler creates a new enpoint handler instance.
+func newEndpointHandler(rt *Router) *endpointHandler {
+	return &endpointHandler{rt}
+}
+
+// ServeHTTP satisfies 'http.Handler' interface requirements for the endpoint handler.
+func (h *endpointHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+	for _, endpoint := range h.router.endpoints {
+		if ctx, ok := endpoint.pattern.match(r.URL.Path); ok {
+			endpoint.handle(ctx, rw, r)
+			return
+		}
+	}
+
+	rw.WriteHeader(http.StatusNotFound)
 }

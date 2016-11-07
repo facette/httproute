@@ -1,21 +1,36 @@
 package httproute
 
 import (
-	"context"
 	"net/http"
 	"strings"
 )
 
 // Router represents an HTTP router instance.
 type Router struct {
-	endpoints []*Endpoint
+	endpoints       []*Endpoint
+	middlewares     []func(http.Handler) http.Handler
+	endpointHandler *endpointHandler
+	chain           http.Handler
 }
 
 // NewRouter creates a new HTTP router instance.
 func NewRouter() *Router {
-	return &Router{
-		endpoints: []*Endpoint{},
+	rt := &Router{
+		endpoints:   []*Endpoint{},
+		middlewares: []func(http.Handler) http.Handler{},
 	}
+
+	rt.endpointHandler = newEndpointHandler(rt)
+
+	return rt
+}
+
+// Endpoint creates a new HTTP router endpoint.
+func (rt *Router) Endpoint(pattern string) *Endpoint {
+	e := newEndpoint(pattern, rt)
+	rt.endpoints = append(rt.endpoints, e)
+
+	return e
 }
 
 // ServeHTTP satisfies 'http.Handler' interface requirements.
@@ -25,21 +40,19 @@ func (rt *Router) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		path = strings.TrimSuffix(path, "/")
 	}
 
-	endpoint, ctx := rt.match(path)
-	if endpoint == nil {
-		rw.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	endpoint.handle(ctx, rw, r)
+	rt.chain.ServeHTTP(rw, r)
 }
 
-func (rt *Router) match(path string) (*Endpoint, context.Context) {
-	for _, endpoint := range rt.endpoints {
-		if ctx, ok := endpoint.pattern.match(path); ok {
-			return endpoint, ctx
-		}
-	}
+// Use registers a new middleware in the HTTP handlers chain.
+func (rt *Router) Use(f func(http.Handler) http.Handler) {
+	rt.middlewares = append(rt.middlewares, f)
+	rt.updateChain()
+}
 
-	return nil, nil
+// updateChain updates the middleware HTTP handlers chain.
+func (rt *Router) updateChain() {
+	rt.chain = rt.endpointHandler
+	for i := len(rt.middlewares) - 1; i >= 0; i-- {
+		rt.chain = rt.middlewares[i](rt.chain)
+	}
 }
