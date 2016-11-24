@@ -21,6 +21,7 @@ func TestPatternMatch(t *testing.T) {
 		{"/*", "/foo", true, nil},
 		{"/foo/:key", "/foo/", false, nil},
 		{"/foo/:key", "/foo/a", true, map[string]interface{}{"key": "a"}},
+		{"/foo/:key", "/foo/a/b", false, nil},
 		{"/foo/:key", "/foo/:a", true, map[string]interface{}{"key": ":a"}},
 		{"/foo/:key_a", "/foo/a", true, map[string]interface{}{"key_a": "a"}},
 		{"/foo/:key/bar", "/foo/a", false, nil},

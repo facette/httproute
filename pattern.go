@@ -78,6 +78,11 @@ func (p *pattern) match(path string) (context.Context, bool) {
 			key, next, j = matchNext(p.value, matchKeyStop, j+1)
 			value, _, i = matchNext(path, matchByte(next), i)
 
+			// Stop if a sub-level has been found in value
+			if strings.Contains(value, "/") {
+				return nil, false
+			}
+
 			ctx = context.WithValue(ctx, key, value)
 
 		case path[i] == p.value[j]:
