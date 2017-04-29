@@ -44,9 +44,11 @@ func (rt *Router) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 }
 
 // Use registers a new middleware in the HTTP handlers chain.
-func (rt *Router) Use(f func(http.Handler) http.Handler) {
+func (rt *Router) Use(f func(http.Handler) http.Handler) *Router {
 	rt.middlewares = append(rt.middlewares, f)
 	rt.updateChain()
+
+	return rt
 }
 
 // updateChain updates the middleware HTTP handlers chain.
