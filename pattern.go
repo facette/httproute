@@ -73,14 +73,14 @@ func (p *pattern) match(ctx context.Context, path string) (context.Context, bool
 
 			// Append new value to the pattern context
 			key, next, j = matchNext(p.value, matchKeyStop, j+1)
+			if next == 0 && p.hasWildcard {
+				next = '/'
+			}
+
 			value, _, i = matchNext(path, matchByte(next), i)
 
-			// A sub-level has been found in value, stop or continue if wildcard
-			if strings.Contains(value, "/") {
-				if p.hasWildcard {
-					continue
-				}
-
+			// Stop if sub-level has been found in value and no wildcard
+			if strings.Contains(value, "/") && !p.hasWildcard {
 				return nil, false
 			}
 
