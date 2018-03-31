@@ -41,7 +41,7 @@ func newPattern(value string) *pattern {
 func (p *pattern) match(ctx context.Context, path string) (context.Context, bool) {
 	var i, j int
 
-	// Remove trailing slash on patn for future comparison
+	// Remove trailing slash on path for future comparison
 	if path != "/" && strings.HasSuffix(path, "/") {
 		path = strings.TrimSuffix(path, "/")
 	}
@@ -75,8 +75,12 @@ func (p *pattern) match(ctx context.Context, path string) (context.Context, bool
 			key, next, j = matchNext(p.value, matchKeyStop, j+1)
 			value, _, i = matchNext(path, matchByte(next), i)
 
-			// Stop if a sub-level has been found in value
+			// A sub-level has been found in value, stop or continue if wildcard
 			if strings.Contains(value, "/") {
+				if p.hasWildcard {
+					continue
+				}
+
 				return nil, false
 			}
 
