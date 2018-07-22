@@ -1,4 +1,4 @@
-[![GoDoc](https://godoc.org/github.com/facette/httproute?status.svg)](https://godoc.org/github.com/facette/httproute)
+[![GoDoc](https://godoc.org/github.com/vbatoufflet/httproute?status.svg)](https://godoc.org/github.com/vbatoufflet/httproute)
 
 # httproute: HTTP router
 
@@ -16,7 +16,7 @@ import (
         "log"
         "net/http"
 
-        "github.com/facette/httproute"
+        "github.com/vbatoufflet/httproute"
 )
 
 func main() {
