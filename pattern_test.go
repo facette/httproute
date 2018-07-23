@@ -1,86 +1,118 @@
 package httproute
 
 import (
-	"reflect"
-	"strings"
+	"context"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-type matchTest struct {
-	pattern string
-	path    string
-	match   bool
-	data    map[string]interface{}
-}
-
 func TestPatternMatch(t *testing.T) {
-	for _, mt := range []matchTest{
-		{"/", "/", true, nil},
-		{"/", "/foo", false, nil},
-		{"/*", "/", true, nil},
-		{"/*", "/foo", true, nil},
-		{"/foo/:key", "/foo/", false, nil},
-		{"/foo/:key", "/foo/a", true, map[string]interface{}{"key": "a"}},
-		{"/foo/:key", "/foo/a/b", false, nil},
-		{"/foo/:key", "/foo/:a", true, map[string]interface{}{"key": ":a"}},
-		{"/foo/:key_a", "/foo/a", true, map[string]interface{}{"key_a": "a"}},
-		{"/foo/:key/bar", "/foo/a", false, nil},
-		{"/foo/:key/bar", "/foo/a/bar", true, map[string]interface{}{"key": "a"}},
-		{"/foo/:key/*", "/foo/a/bar", true, map[string]interface{}{"key": "a"}},
-		{"/foo/:key1/bar/:key2", "/foo/a/bar", false, nil},
-		{"/foo/:key1/bar/:key2", "/foo/a/bar/b", true, map[string]interface{}{"key1": "a", "key2": "b"}},
-		{"/foo/:key.ext", "/foo/.ext", true, map[string]interface{}{"key": ""}},
-		{"/foo/:key.ext", "/foo/a.ext", true, map[string]interface{}{"key": "a"}},
-		{"/foo/:key.", "/foo/a.", true, map[string]interface{}{"key": "a"}},
-		{"/foo/:key1:key2", "/foo/a", true, map[string]interface{}{"key1": "a", "key2": ""}},
-		{"/foo/:key1.:key2", "/foo/a.b", true, map[string]interface{}{"key1": "a", "key2": "b"}},
-		{"/foo/:key1.:key2", "/foo/.b", true, map[string]interface{}{"key1": "", "key2": "b"}},
-		{"/foo/:key1.:key2", "/foo/a.", true, map[string]interface{}{"key1": "a", "key2": ""}},
-		{"/foo/bar:key", "/foo/bara", true, map[string]interface{}{"key": "a"}},
-	} {
-		mt1 := mt
-		execTestPatternMatch(mt1, t)
+	var (
+		p   *pattern
+		ctx context.Context
+		ok  bool
+	)
 
-		// Testing trailing slashes pattern variants
-		if !strings.HasSuffix(mt.pattern, "/*") {
-			mt2 := mt
-			mt.pattern += "/"
-			execTestPatternMatch(mt2, t)
-		}
+	p = newPattern("/")
+	ctx, ok = p.match(nil, "/")
+	assert.Nil(t, ctx)
+	assert.True(t, ok)
+	ctx, ok = p.match(nil, "/foo")
+	assert.Nil(t, ctx)
+	assert.False(t, ok)
 
-		// Testing trailing slashes paths variants
-		mt3 := mt
-		mt.path += "/"
-		execTestPatternMatch(mt3, t)
-	}
-}
+	p = newPattern("/*")
+	ctx, ok = p.match(nil, "/")
+	assert.Nil(t, ctx)
+	assert.True(t, ok)
+	ctx, ok = p.match(nil, "/foo")
+	assert.Nil(t, ctx)
+	assert.True(t, ok)
 
-func execTestPatternMatch(mt matchTest, t *testing.T) {
-	p := newPattern(mt.pattern)
+	p = newPattern("/foo/:key")
+	ctx, ok = p.match(nil, "/foo/a")
+	assert.Equal(t, context.WithValue(nil, contextKey{"key"}, "a"), ctx)
+	assert.True(t, ok)
+	ctx, ok = p.match(nil, "/foo/")
+	assert.Nil(t, ctx)
+	assert.False(t, ok)
+	ctx, ok = p.match(nil, "/foo/a/b")
+	assert.Nil(t, ctx)
+	assert.False(t, ok)
 
-	ctx, match := p.match(nil, mt.path)
-	if match != mt.match {
-		t.Errorf(
-			"invalid match for %q path on %q pattern: expected \"%t\" but got \"%t\"",
-			mt.path,
-			mt.pattern,
-			mt.match,
-			match,
-		)
-	} else if ctx != nil && mt.data != nil {
-		data := map[string]interface{}{}
-		for key := range mt.data {
-			data[key] = ctx.Value(key)
-		}
+	p = newPattern("/foo/:key_a")
+	ctx, ok = p.match(nil, "/foo/a")
+	assert.Equal(t, context.WithValue(nil, contextKey{"key_a"}, "a"), ctx)
+	assert.True(t, ok)
 
-		if !reflect.DeepEqual(mt.data, data) {
-			t.Errorf(
-				"invalid context data for %q path on %q pattern: expected %v but got %v",
-				mt.path,
-				mt.pattern,
-				mt.data,
-				data,
-			)
-		}
-	}
+	p = newPattern("/foo/:key/bar")
+	ctx, ok = p.match(nil, "/foo/a/bar")
+	assert.Equal(t, context.WithValue(nil, contextKey{"key"}, "a"), ctx)
+	assert.True(t, ok)
+	ctx, ok = p.match(nil, "/foo/a")
+	assert.Nil(t, ctx)
+	assert.False(t, ok)
+	ctx, ok = p.match(nil, "/foo/a/")
+	assert.Nil(t, ctx)
+	assert.False(t, ok)
+
+	p = newPattern("/foo/:key/*")
+	ctx, ok = p.match(nil, "/foo/a/bar")
+	assert.Equal(t, context.WithValue(nil, contextKey{"key"}, "a"), ctx)
+	assert.True(t, ok)
+
+	p = newPattern("/foo/:key1/bar/:key2")
+	ctx, ok = p.match(nil, "/foo/a/bar/b")
+	assert.Equal(t, context.WithValue(context.WithValue(nil, contextKey{"key1"}, "a"), contextKey{"key2"}, "b"), ctx)
+	assert.True(t, ok)
+	ctx, ok = p.match(nil, "/foo/a/bar")
+	assert.Nil(t, ctx)
+	assert.False(t, ok)
+	ctx, ok = p.match(nil, "/foo/a/bar/")
+	assert.Nil(t, ctx)
+	assert.False(t, ok)
+
+	p = newPattern("/foo/:key.ext")
+	ctx, ok = p.match(nil, "/foo/.ext")
+	assert.Equal(t, context.WithValue(nil, contextKey{"key"}, ""), ctx)
+	assert.True(t, ok)
+	ctx, ok = p.match(nil, "/foo/a.ext")
+	assert.Equal(t, context.WithValue(nil, contextKey{"key"}, "a"), ctx)
+	assert.True(t, ok)
+
+	p = newPattern("/foo/:key.")
+	ctx, ok = p.match(nil, "/foo/.")
+	assert.Equal(t, context.WithValue(nil, contextKey{"key"}, ""), ctx)
+	assert.True(t, ok)
+	ctx, ok = p.match(nil, "/foo/a.")
+	assert.Equal(t, context.WithValue(nil, contextKey{"key"}, "a"), ctx)
+	assert.True(t, ok)
+
+	p = newPattern("/foo/:key1:key2")
+	ctx, ok = p.match(nil, "/foo/a")
+	assert.Equal(t, context.WithValue(context.WithValue(nil, contextKey{"key1"}, "a"), contextKey{"key2"}, ""), ctx)
+	assert.True(t, ok)
+	ctx, ok = p.match(nil, "/foo/ab")
+	assert.Equal(t, context.WithValue(context.WithValue(nil, contextKey{"key1"}, "ab"), contextKey{"key2"}, ""), ctx)
+	assert.True(t, ok)
+
+	p = newPattern("/foo/:key1.:key2")
+	ctx, ok = p.match(nil, "/foo/a.b")
+	assert.Equal(t, context.WithValue(context.WithValue(nil, contextKey{"key1"}, "a"), contextKey{"key2"}, "b"), ctx)
+	assert.True(t, ok)
+	ctx, ok = p.match(nil, "/foo/a.")
+	assert.Equal(t, context.WithValue(context.WithValue(nil, contextKey{"key1"}, "a"), contextKey{"key2"}, ""), ctx)
+	assert.True(t, ok)
+	ctx, ok = p.match(nil, "/foo/.b")
+	assert.Equal(t, context.WithValue(context.WithValue(nil, contextKey{"key1"}, ""), contextKey{"key2"}, "b"), ctx)
+	assert.True(t, ok)
+
+	p = newPattern("/foo/bar:key")
+	ctx, ok = p.match(nil, "/foo/bar")
+	assert.Equal(t, context.WithValue(nil, contextKey{"key"}, ""), ctx)
+	assert.True(t, ok)
+	ctx, ok = p.match(nil, "/foo/bara")
+	assert.Equal(t, context.WithValue(nil, contextKey{"key"}, "a"), ctx)
+	assert.True(t, ok)
 }

@@ -4,7 +4,7 @@ import "net/http"
 
 // ContextParam returns a request context parameter given its name.
 func ContextParam(r *http.Request, key string) interface{} {
-	return r.Context().Value(key)
+	return r.Context().Value(contextKey{key})
 }
 
 // QueryParam returns a request query parameter given its name.

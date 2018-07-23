@@ -5,25 +5,23 @@ import (
 	"strings"
 )
 
-// pattern represents an endpoint pattern instance.
 type pattern struct {
-	value       string
-	hasSlash    bool
-	hasWildcard bool
+	value    string
+	slash    bool
+	wildcard bool
 }
 
-// newPattern creates a new endpoint pattern instance.
 func newPattern(value string) *pattern {
 	p := &pattern{}
 
 	switch {
 	case strings.HasSuffix(value, "/*"):
 		p.value = strings.TrimSuffix(value, "/*")
-		p.hasWildcard = true
+		p.wildcard = true
 
 	case strings.HasSuffix(value, "/"):
 		p.value = strings.TrimSuffix(value, "/")
-		p.hasSlash = true
+		p.slash = true
 
 	default:
 		p.value = value
@@ -31,13 +29,12 @@ func newPattern(value string) *pattern {
 
 	if p.value == "" {
 		p.value = "/"
-		p.hasSlash = true
+		p.slash = true
 	}
 
 	return p
 }
 
-// match checks whether or not a path matches the pattern, returning the associated context.
 func (p *pattern) match(ctx context.Context, path string) (context.Context, bool) {
 	var i, j int
 
@@ -59,7 +56,7 @@ func (p *pattern) match(ctx context.Context, path string) (context.Context, bool
 		switch {
 		case j >= vLength:
 			// Path has remainder, so check for wildcard in pattern
-			if p.hasWildcard {
+			if p.wildcard {
 				return ctx, true
 			}
 
@@ -73,18 +70,18 @@ func (p *pattern) match(ctx context.Context, path string) (context.Context, bool
 
 			// Append new value to the pattern context
 			key, next, j = matchNext(p.value, matchKeyStop, j+1)
-			if next == 0 && p.hasWildcard {
+			if next == 0 && p.wildcard {
 				next = '/'
 			}
 
 			value, _, i = matchNext(path, matchByte(next), i)
 
 			// Stop if sub-level has been found in value and no wildcard
-			if strings.Contains(value, "/") && !p.hasWildcard {
+			if strings.Contains(value, "/") && !p.wildcard {
 				return nil, false
 			}
 
-			ctx = context.WithValue(ctx, key, value)
+			ctx = context.WithValue(ctx, contextKey{key}, value)
 
 		case path[i] == p.value[j]:
 			i++
@@ -99,7 +96,7 @@ func (p *pattern) match(ctx context.Context, path string) (context.Context, bool
 		// Pattern value has a remainder, check if ending with a key giving it an empty value
 		if p.value[j] == ':' {
 			if key, _, idx := matchNext(p.value, matchKeyStop, j+1); idx == vLength {
-				ctx = context.WithValue(ctx, key, "")
+				ctx = context.WithValue(ctx, contextKey{key}, "")
 				return ctx, true
 			}
 		}
@@ -115,15 +112,12 @@ func matchNext(s string, f func(r rune) bool, i int) (string, byte, int) {
 	if idx == -1 {
 		return s[i:], 0, len(s)
 	}
-
 	idx += i
-
 	return s[i:idx], s[idx], idx
 }
 
 func matchByte(b byte) func(c rune) bool {
 	c1 := rune(b)
-
 	return func(c2 rune) bool {
 		return c2 == c1
 	}
