@@ -46,6 +46,11 @@ func (e *Endpoint) Head(f http.HandlerFunc) *Endpoint {
 func (e *Endpoint) Methods() []string {
 	var hasGet, hasHead bool
 
+	// Return all methods if a handler has been registered for any method.
+	if _, ok := e.handlers[""]; ok {
+		return []string{"DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"}
+	}
+
 	methods := []string{"OPTIONS"}
 	for method := range e.handlers {
 		methods = append(methods, method)
