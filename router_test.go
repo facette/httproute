@@ -160,5 +160,4 @@ func TestRouter(t *testing.T) {
 	assert.Nil(t, err)
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusNotFound, rr.Code)
-	assert.Equal(t, "root", rr.Header().Get("X-Test-Root"))
 }

@@ -23,7 +23,7 @@ func (r *Router) Endpoint(pattern string) *Endpoint {
 
 // ServeHTTP satisfies the http.Handler interface.
 func (r *Router) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	r.root.chain.ServeHTTP(rw, req)
+	r.root.handler.ServeHTTP(rw, req)
 }
 
 // Use registers a new middleware in the HTTP handlers chain.
