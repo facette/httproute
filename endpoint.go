@@ -8,18 +8,28 @@ import (
 
 // Endpoint represents an HTTP router endpoint.
 type Endpoint struct {
-	pattern   *pattern
-	handlers  map[string]http.HandlerFunc
-	endpoints []*Endpoint
-	router    *Router
+	pattern     *pattern
+	handlers    map[string]http.HandlerFunc
+	middlewares []func(http.Handler) http.Handler
+	handler     *handler
+	chain       http.Handler
+	endpoints   []*Endpoint
+	root        *Endpoint
 }
 
-func newEndpoint(pattern string, router *Router) *Endpoint {
-	return &Endpoint{
+func newEndpoint(pattern string) *Endpoint {
+	e := &Endpoint{
 		pattern:  newPattern(pattern),
 		handlers: map[string]http.HandlerFunc{},
-		router:   router,
 	}
+	e.handler = newHandler(e)
+	e.chain = e.handler
+
+	if pattern == "" {
+		e.root = e
+	}
+
+	return e
 }
 
 // Any registers a handler for any method.
@@ -30,6 +40,18 @@ func (e *Endpoint) Any(f http.HandlerFunc) *Endpoint {
 // Delete registers a DELETE method handler.
 func (e *Endpoint) Delete(f http.HandlerFunc) *Endpoint {
 	return e.register("DELETE", f)
+}
+
+// Endpoint creates a new HTTP router endpoint.
+func (e *Endpoint) Endpoint(pattern string) *Endpoint {
+	endpoint := newEndpoint(strings.TrimRight(e.pattern.value, "/") + "/" + strings.TrimLeft(pattern, "/"))
+	endpoint.root = e.root
+	endpoint.middlewares = e.middlewares[:]
+	endpoint.updateChain()
+
+	e.root.endpoints = append(e.root.endpoints, endpoint)
+
+	return endpoint
 }
 
 // Get registers a GET method handler.
@@ -84,6 +106,13 @@ func (e *Endpoint) Put(f http.HandlerFunc) *Endpoint {
 	return e.register("PUT", f)
 }
 
+// Use registers a new middleware in the HTTP handlers chain.
+func (e *Endpoint) Use(f func(http.Handler) http.Handler) *Endpoint {
+	e.middlewares = append(e.middlewares, f)
+	e.updateChain()
+	return e
+}
+
 func (e *Endpoint) register(method string, f http.HandlerFunc) *Endpoint {
 	e.handlers[method] = f
 	return e
@@ -105,20 +134,16 @@ func (e *Endpoint) serve(rw http.ResponseWriter, r *http.Request) {
 
 	handler, ok := e.handlers[r.Method]
 	if !ok {
-		if _, ok = e.handlers[""]; ok {
+		if r.Method == "OPTIONS" {
+			rw.Header().Add("Allow", strings.Join(e.Methods(), ", "))
+			rw.WriteHeader(http.StatusNoContent)
+			return
+		} else if _, ok = e.handlers[""]; ok {
 			// Use "Any" handler
 			handler = e.handlers[""]
-		} else {
-			switch r.Method {
-			case "HEAD":
-				// Use GET method handler when HEAD is requested
-				handler, ok = e.handlers["GET"]
-
-			case "OPTIONS":
-				rw.Header().Add("Allow", strings.Join(e.Methods(), ", "))
-				rw.WriteHeader(http.StatusNoContent)
-				return
-			}
+		} else if r.Method == "HEAD" {
+			// Use GET method handler when HEAD is requested
+			handler, ok = e.handlers["GET"]
 		}
 
 		if !ok {
@@ -128,4 +153,11 @@ func (e *Endpoint) serve(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	handler(rw, r)
+}
+
+func (e *Endpoint) updateChain() {
+	e.chain = e.handler
+	for i := len(e.middlewares) - 1; i >= 0; i-- {
+		e.chain = e.middlewares[i](e.chain)
+	}
 }

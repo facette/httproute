@@ -5,6 +5,10 @@ import (
 	"strings"
 )
 
+type contextKey struct {
+	name string
+}
+
 type pattern struct {
 	value    string
 	slash    bool
