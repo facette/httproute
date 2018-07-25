@@ -1,6 +1,4 @@
-[![GoDoc](https://godoc.org/github.com/vbatoufflet/httproute?status.svg)](https://godoc.org/github.com/vbatoufflet/httproute)
-
-# httproute: HTTP router
+# httproute: HTTP router [![GoDoc][godoc-badge]][godoc-url] [![Travis CI][travis-badge]][travis-url]
 
 Basic HTTP router for Go.
 
@@ -70,3 +68,8 @@ Received "baz"
 # curl http://localhost:8080/
 Default here!
 ```
+
+[godoc-badge]: https://godoc.org/github.com/vbatoufflet/httproute?status.svg
+[godoc-url]: https://godoc.org/github.com/vbatoufflet/httproute
+[travis-badge]: https://api.travis-ci.org/vbatoufflet/httproute.svg
+[travis-url]: https://travis-ci.org/vbatoufflet/httproute
