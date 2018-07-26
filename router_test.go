@@ -17,9 +17,9 @@ func TestRouter(t *testing.T) {
 
 	r := NewRouter().
 		Use(func(h http.Handler) http.Handler {
-			return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				rw.Header().Add("X-Test-Root", "root")
-				h.ServeHTTP(rw, req)
+				h.ServeHTTP(rw, r)
 			})
 		})
 
@@ -27,12 +27,14 @@ func TestRouter(t *testing.T) {
 
 	e := r.Endpoint("/a").
 		Use(func(h http.Handler) http.Handler {
-			return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				rw.Header().Add("X-Test-A", "a")
-				h.ServeHTTP(rw, req)
+				h.ServeHTTP(rw, SetContextParam(r, "foo", 123))
 			})
 		}).
-		Get(func(rw http.ResponseWriter, r *http.Request) {})
+		Get(func(rw http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, 123, ContextParam(r, "foo"))
+		})
 
 	e.Endpoint("/b").Get(func(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(http.StatusForbidden)
