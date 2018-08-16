@@ -34,6 +34,9 @@ func TestRouter(t *testing.T) {
 		}).
 		Get(func(rw http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, 123, ContextParam(r, "foo"))
+		}).
+		Options(func(rw http.ResponseWriter, r *http.Request) {
+			rw.WriteHeader(http.StatusNoContent)
 		})
 
 	e.Endpoint("/b").Get(func(rw http.ResponseWriter, r *http.Request) {
