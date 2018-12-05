@@ -15,7 +15,7 @@ func TestRouter(t *testing.T) {
 		err error
 	)
 
-	r := NewRouter().
+	r := New().
 		Use(func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				rw.Header().Add("X-Test-Root", "root")
