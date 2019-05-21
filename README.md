@@ -14,7 +14,7 @@ import (
         "log"
         "net/http"
 
-        "github.com/vbatoufflet/httprouter"
+        "batou.dev/httprouter"
 )
 
 func main() {
@@ -69,7 +69,7 @@ Received "baz"
 Default here!
 ```
 
-[godoc-badge]: https://godoc.org/github.com/vbatoufflet/httprouter?status.svg
-[godoc-url]: https://godoc.org/github.com/vbatoufflet/httprouter
+[godoc-badge]: https://godoc.org/batou.dev/httprouter?status.svg
+[godoc-url]: https://godoc.org/batou.dev/httprouter
 [travis-badge]: https://api.travis-ci.org/vbatoufflet/httprouter.svg
 [travis-url]: https://travis-ci.org/vbatoufflet/httprouter
