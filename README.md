@@ -23,10 +23,8 @@ func main() {
         r.Endpoint("/foo").
                 Get(handleFoo).
                 Post(handleFoo)
-
         r.Endpoint("/bar/:baz").
                 Get(handleBar)
-
         r.Endpoint("/*").
                 Get(handleDefault)
 
@@ -35,7 +33,8 @@ func main() {
                 Handler: r,
         }
 
-        if err := s.ListenAndServe(); err != nil {
+        err := s.ListenAndServe()
+        if err != nil {
                 log.Fatal(err)
         }
 }

@@ -46,7 +46,7 @@ func (e *Endpoint) Delete(f http.HandlerFunc) *Endpoint {
 func (e *Endpoint) Endpoint(pattern string) *Endpoint {
 	endpoint := newEndpoint(strings.TrimRight(e.pattern.value, "/") + "/" + strings.TrimLeft(pattern, "/"))
 	endpoint.root = e.root
-	endpoint.middlewares = e.middlewares[:]
+	endpoint.middlewares = append([]func(http.Handler) http.Handler{}, e.middlewares...)
 	endpoint.updateChain()
 
 	e.root.endpoints = append(e.root.endpoints, endpoint)
@@ -66,12 +66,13 @@ func (e *Endpoint) Head(f http.HandlerFunc) *Endpoint {
 
 // Methods returns the list of methods available from the HTTP router endpoint.
 func (e *Endpoint) Methods() []string {
-	var hasGet, hasHead bool
-
 	// Return all methods if a handler has been registered for any method.
-	if _, ok := e.handlers[""]; ok {
+	_, ok := e.handlers[""]
+	if ok {
 		return []string{"DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"}
 	}
+
+	var hasGet, hasHead bool
 
 	methods := []string{}
 	for method := range e.handlers {
@@ -83,12 +84,16 @@ func (e *Endpoint) Methods() []string {
 			hasHead = true
 		}
 	}
+
 	if hasGet && !hasHead {
 		methods = append(methods, "HEAD")
 	}
-	if _, ok := e.handlers["OPTIONS"]; !ok {
+
+	_, ok = e.handlers["OPTIONS"]
+	if !ok {
 		methods = append(methods, "OPTIONS")
 	}
+
 	sort.Strings(methods)
 
 	return methods
@@ -118,6 +123,7 @@ func (e *Endpoint) Put(f http.HandlerFunc) *Endpoint {
 func (e *Endpoint) Use(f func(http.Handler) http.Handler) *Endpoint {
 	e.middlewares = append(e.middlewares, f)
 	e.updateChain()
+
 	return e
 }
 
@@ -132,10 +138,12 @@ func (e *Endpoint) serve(rw http.ResponseWriter, r *http.Request) {
 		if e.pattern.slash && !strings.HasSuffix(r.URL.Path, "/") {
 			r.URL.Path += "/"
 			http.Redirect(rw, r, r.URL.String(), http.StatusPermanentRedirect)
+
 			return
 		} else if !e.pattern.slash && strings.HasSuffix(r.URL.Path, "/") {
 			r.URL.Path = strings.TrimSuffix(r.URL.Path, "/")
 			http.Redirect(rw, r, r.URL.String(), http.StatusPermanentRedirect)
+
 			return
 		}
 	}
@@ -145,6 +153,7 @@ func (e *Endpoint) serve(rw http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			rw.Header().Add("Allow", strings.Join(e.Methods(), ", "))
 			rw.WriteHeader(http.StatusNoContent)
+
 			return
 		} else if _, ok = e.handlers[""]; ok {
 			// Use "Any" handler

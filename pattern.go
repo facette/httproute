@@ -99,7 +99,8 @@ func (p *pattern) match(ctx context.Context, path string) (context.Context, bool
 	if j != vLength {
 		// Pattern value has a remainder, check if ending with a key giving it an empty value
 		if p.value[j] == ':' {
-			if key, _, idx := matchNext(p.value, matchKeyStop, j+1); idx == vLength {
+			key, _, idx := matchNext(p.value, matchKeyStop, j+1)
+			if idx == vLength {
 				ctx = context.WithValue(ctx, contextKey{key}, "")
 				return ctx, true
 			}
@@ -116,12 +117,15 @@ func matchNext(s string, f func(r rune) bool, i int) (string, byte, int) {
 	if idx == -1 {
 		return s[i:], 0, len(s)
 	}
+
 	idx += i
+
 	return s[i:idx], s[idx], idx
 }
 
 func matchByte(b byte) func(c rune) bool {
 	c1 := rune(b)
+
 	return func(c2 rune) bool {
 		return c2 == c1
 	}

@@ -28,7 +28,8 @@ func (h *handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, e := range h.endpoint.root.endpoints {
-		if ctx, ok := e.pattern.match(r.Context(), path); ok {
+		ctx, ok := e.pattern.match(r.Context(), path)
+		if ok {
 			e.chain.ServeHTTP(rw, r.WithContext(ctx))
 			return
 		}

@@ -9,12 +9,15 @@ import (
 )
 
 func TestContextParam(t *testing.T) {
-	r, _ := http.NewRequest("", "", nil)
-	r = r.WithContext(context.WithValue(nil, contextKey{"key"}, "value"))
+	r, err := http.NewRequest("", "", nil)
+	assert.Nil(t, err)
+
+	r = r.WithContext(context.WithValue(context.TODO(), contextKey{"key"}, "value"))
 	assert.Equal(t, "value", ContextParam(r, "key"))
 }
 
 func TestQueryParam(t *testing.T) {
-	r, _ := http.NewRequest("", "?key=value", nil)
+	r, err := http.NewRequest("", "?key=value", nil)
+	assert.Nil(t, err)
 	assert.Equal(t, "value", QueryParam(r, "key"))
 }
